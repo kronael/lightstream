@@ -1,0 +1,20 @@
+[Unit]
+Description=Lightbringer Solana shred ingest and block stream
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lightbringer
+Group=lightbringer
+WorkingDirectory=/var/lib/lightbringer
+ExecStart=/usr/local/bin/lightbringer
+Restart=on-failure
+RestartSec=5
+# Turbine opens one socket per port in the configured range.
+LimitNOFILE=65536
+StandardOutput=append:/var/log/lightbringer/lightbringer.log
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
