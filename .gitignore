@@ -1,0 +1,10 @@
+/node_modules/
+/*.sqlite
+/*.sqlite-wal
+/*.sqlite-shm
+/.diary/
+/BUGS.md
+/.claude/
+# Lightbringer's contract, copied in by `make proto-sync`; not ours to redistribute.
+/proto/pb/
+/dist/
