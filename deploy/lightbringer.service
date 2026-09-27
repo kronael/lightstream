@@ -1,3 +1,7 @@
+# Runs Lightbringer on its own, for the case where lightstream attaches to it
+# with --config instead of spawning it. Enable THIS unit or lightstream.service,
+# never both: two nodes contend for the same gossip identity, ports and
+# shred-store lock.
 [Unit]
 Description=Lightbringer Solana shred ingest and block stream
 After=network-online.target
