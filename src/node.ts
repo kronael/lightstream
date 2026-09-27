@@ -9,6 +9,12 @@ export interface NodeOptions {
   /** Omitted leaves the stream ungated: every reassembled slot, nothing vouching. */
   mode?: "alpenglow";
   snapshotSource?: string;
+  /**
+   * The cluster's JSON-RPC, used for the leader schedule every shred is checked
+   * against. Lightbringer defaults it to the Alpenglow test cluster, whose schedule
+   * matches no mainnet shred, so alpenglow mode must always set it explicitly.
+   */
+  rpcHttp?: string;
   workDir: string;
 }
 
@@ -30,6 +36,9 @@ export function writeConfig(options: NodeOptions): string {
   ];
   if (options.mode === "alpenglow") {
     lines.push("", "[block_confirmation]", 'mode = "alpenglow"');
+    if (options.rpcHttp !== undefined) {
+      lines.push(`rpc_http = "${options.rpcHttp}"`);
+    }
     if (options.snapshotSource !== undefined) {
       lines.push(`snapshot_source = "${options.snapshotSource}"`);
     }

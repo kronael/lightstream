@@ -19,6 +19,8 @@ run options:
   --endpoint <host:port> gRPC address (default 127.0.0.1:3001)
   --config <path>        an existing node's config, when attaching
   --snapshot <url>       snapshot source for the Alpenglow rank map
+  --rpc <url>            the same cluster's JSON-RPC, for the leader schedule;
+                         required with --snapshot
   --db <path>            SQLite file (default ./lightstream.sqlite)
   --accounts <a,b,c>     index only transactions touching these accounts
   --no-db                stream and report, write nothing
@@ -46,6 +48,7 @@ const { values, positionals } = parseArgs({
     endpoint: { type: "string", default: "127.0.0.1:3001" },
     config: { type: "string" },
     snapshot: { type: "string" },
+    rpc: { type: "string" },
     db: { type: "string", default: "./lightstream.sqlite" },
     accounts: { type: "string" },
     "no-db": { type: "boolean", default: false },
@@ -118,7 +121,11 @@ function nodeOptions(binary: string): NodeOptions {
   const alpenglow =
     values.snapshot === undefined
       ? {}
-      : { mode: "alpenglow" as const, snapshotSource: values.snapshot };
+      : {
+          mode: "alpenglow" as const,
+          snapshotSource: values.snapshot,
+          rpcHttp: values.rpc,
+        };
   return {
     binary,
     gossipEntrypoint: values.entrypoint,
@@ -132,6 +139,15 @@ function nodeOptions(binary: string): NodeOptions {
 async function run(): Promise<void> {
   let configPath = values.config;
   let node: Bun.Subprocess | undefined;
+
+  if (values.snapshot !== undefined && values.rpc === undefined) {
+    throw new Error(
+      "--snapshot needs --rpc naming the same cluster's JSON-RPC. Without it " +
+        "Lightbringer falls back to its own default, the Alpenglow test cluster, " +
+        "whose leader schedule matches no mainnet shred — every shred is dropped " +
+        "and the stream stays empty with no error.",
+    );
+  }
 
   if (values.binary !== undefined) {
     const options = nodeOptions(values.binary);
