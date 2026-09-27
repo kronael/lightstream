@@ -47,14 +47,28 @@ test("alpenglow mode is a certificate signoff", () => {
 
 /**
  * A mode key belonging to a later section must not be read as the confirmation
- * mode, or an unvouched stream would be reported as verified.
+ * mode, or an unvouched stream would be reported as verified. The section itself is
+ * present, so the node's own default applies.
  */
 test("a mode key in a later section is not mistaken for the signoff", () => {
   const path = configFile(
     "later.toml",
     '[block_confirmation]\n\n[other]\nmode = "alpenglow"\n',
   );
-  expect(readSignoff(path)).toBe("none");
+  expect(readSignoff(path)).toBe("rpc-confirmed");
+});
+
+/**
+ * Lightbringer types mode as #[serde(default)] with Rpc as the default, so a section
+ * that configures rpc endpoints without naming a mode is rpc mode to the node.
+ * Reporting "none" would refuse a run the node would in fact have gated.
+ */
+test("a block_confirmation section without a mode key is rpc mode", () => {
+  const path = configFile(
+    "nomode.toml",
+    '[block_confirmation]\nrpc_http = "https://api.mainnet-beta.solana.com"\n',
+  );
+  expect(readSignoff(path)).toBe("rpc-confirmed");
 });
 
 /** An unknown mode is a config the operator must fix, not a silent "none". */

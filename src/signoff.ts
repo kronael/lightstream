@@ -13,7 +13,8 @@ const MODE_TO_SIGNOFF: Record<string, Signoff> = {
  * Lightbringer gates its stream on the configured block-confirmation mode, so the
  * config is what decides whether a delivered slot carries a proof at all: with no
  * [block_confirmation] section every reassembled slot is emitted and nothing has
- * vouched for it. Throws when the section names a mode this does not know.
+ * vouched for it. A section that omits `mode` is rpc mode, which is the node's own
+ * default. Throws when the section names a mode this does not know.
  */
 export function readSignoff(configPath: string): Signoff {
   const toml = readFileSync(configPath, "utf8");
@@ -25,7 +26,7 @@ export function readSignoff(configPath: string): Signoff {
   const body = section.split(/^\s*\[/m)[0] ?? "";
   const mode = body.match(/^\s*mode\s*=\s*"([^"]+)"/m)?.[1];
   if (mode === undefined) {
-    return "none";
+    return "rpc-confirmed";
   }
 
   const signoff = MODE_TO_SIGNOFF[mode];
