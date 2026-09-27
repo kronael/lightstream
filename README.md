@@ -11,7 +11,8 @@ Every ordinary Solana feed hands you a commitment level you cannot check: a
 provider's `confirmed`, a vendor's `finalized`. You are trusting their word.
 Lightbringer rebuilds blocks from the network itself and checks the validators'
 signatures on them locally, on your machine. It had no consumer other than a full
-verifying node. This is that consumer.
+verifying node — it ships only `lightbringer-grpc-client`, which logs slot and
+transaction counts. This is a real consumer.
 
 ## Words you need
 
@@ -26,8 +27,8 @@ to everyone.
   *entrypoint*, a known address that introduces it to the rest.
 - **Finalization certificate** — the proof a block was agreed on: a bundle of
   validator signatures. Checking one means checking the signatures add up to
-  enough of the network's stake. Solana's name for this scheme is **Alpenglow**,
-  which is what `mode = "alpenglow"` below means.
+  enough of the network's stake. These certificates come from **Alpenglow**, Solana's
+  consensus protocol, which is what `mode = "alpenglow"` below means.
 - **Rank map** — who holds how much stake this epoch. You need it to know whether
   the signatures on a certificate add up to enough. It comes out of a **snapshot**,
   a dump of chain state that a node serves over HTTP.
@@ -44,9 +45,12 @@ block's certificate against the rank map. lightstream reads what it produces.
   You need the checkout as well as the binary: the build copies two `.proto` files
   out of it (see NOTICE for why they are not shipped here).
 - **Bun**, pinned in `.bun-version`.
-- Trust: the certificate arithmetic and the stake table in the snapshot manifest.
-  Not any RPC provider — though Lightbringer itself still fetches the leader
-  schedule over JSON-RPC.
+- Trust, stated plainly: the certificate arithmetic, **and two HTTP endpoints you
+  must not assume are honest**. The stake table arrives as a snapshot manifest
+  fetched over plain HTTP with no hash check, from `--snapshot`. The leader schedule
+  every shred is checked against comes from `--rpc`. Either one lying fails closed;
+  both lying together can make injected shreds look final. What you avoid is
+  trusting a provider's *commitment label* — not trusting providers.
 
 ## Use
 
@@ -57,7 +61,8 @@ bun install
 bun run lightstream preflight           # read-only: can this host receive Turbine?
 bun run lightstream run \
   --binary /usr/local/bin/lightbringer \
-  --snapshot https://api.mainnet-beta.solana.com
+  --snapshot https://api.mainnet-beta.solana.com \
+  --rpc https://api.mainnet-beta.solana.com
 ```
 
 `preflight` reports all five checks and exits non-zero if any failed; that exit is
@@ -94,11 +99,15 @@ fork is indexed and nothing ever retracts it.
 
 `--snapshot` is where Lightbringer fetches the snapshot manifest holding the epoch
 stake table, which is what its certificate arithmetic is checked against. It must
-be a node that serves snapshots: the fetch tries `snapshot.tar.zst`,
-`snapshot.tar.bz2` and the `incremental-` pair under that base, and requires the
-redirect to land on a `.tar.zst` artifact. A plain JSON-RPC endpoint will not do.
-Point it at the cluster you are following — a mainnet index needs a mainnet
-snapshot.
+be a node that serves snapshots: the fetch tries `incremental-snapshot.tar.zst`,
+`incremental-snapshot.tar.bz2`, `snapshot.tar.zst` and `snapshot.tar.bz2` under that
+base in that order, and requires the redirect to land on a `.tar.zst` artifact. A
+plain JSON-RPC endpoint will not do.
+
+`--rpc` must name the **same cluster**. Lightbringer defaults it to its own Alpenglow
+test cluster, whose leader schedule matches no mainnet shred — every shred would be
+dropped before reassembly and the stream would stay empty with no error at all. `run`
+refuses `--snapshot` without `--rpc` for exactly that reason.
 
 ## Running it as a service
 
@@ -107,8 +116,8 @@ snapshot.
 (`PREFIX ?= /usr/local`, `DESTDIR` honoured). Create the `lightstream` user and
 `/var/lib/lightstream` yourself, then enable **one** of the two units:
 `lightstream.service` spawns Lightbringer itself, `lightbringer.service` runs it
-standalone for the attach case. Enabling both runs two nodes contending for the
-same gossip identity, ports and shred-store lock.
+standalone for the attach case. Enabling both runs two nodes contending for UDP
+65400-65500 and the gRPC port.
 
 Run `lightstream preflight` before enabling and after any network change. It is
 deliberately not an `ExecStartPre`: its disk and RAM floors are conservative
@@ -124,17 +133,26 @@ floor `preflight` checks once at start. Lightbringer's own unit appends to
 ## Limits
 
 - Never run against live mainnet data: every host available during development was
-  behind NAT. Connect, decode and shutdown paths are verified; throughput is
-  unmeasured, and the `preflight` floors (50G disk, 8G RAM) are estimates that no
-  measurement backs.
+  behind NAT. The connect and shutdown paths are verified; the decode path has never
+  seen a real slot, throughput is unmeasured, and the `preflight` floors (50G disk,
+  8G RAM) are estimates that no measurement backs.
 - Only `src/base58.ts` and `src/signoff.ts` have tests. The host checks, the node
   spawn, the stream decode and the CLI run loop do not.
 - There is no CI. `make lint` and `make test` are the gate, run by hand.
 - Transaction payloads are not stored, only signature and account keys.
+- `--accounts` matches only the account keys carried in the message. A v0
+  transaction that reaches an account through an address lookup table will not match,
+  which covers most DeFi traffic. `slots.tx_count` is the filtered count, not the
+  block's.
 - With `signoff = 'none'` the losing side of a fork is indexed and nothing ever
   retracts it.
-- The stream has no replay on reconnect; `run` reports parent-link breaks but does
-  not backfill them.
+- lightstream never backfills. Lightbringer does expose `CatchupSlots`, but it
+  serves stored shreds with no confirmation gating, so using it naively would
+  reintroduce unvouched blocks under whatever sign-off the run carries. `run` reports
+  parent-link breaks and stops there.
+- A slow consumer loses slots silently: the node's broadcast channel drops on lag and
+  the only symptom is the break counter, which under `none` cannot tell loss from a
+  fork.
 
 ## Credit
 

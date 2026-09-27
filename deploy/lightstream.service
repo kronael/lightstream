@@ -9,8 +9,8 @@ User=lightstream
 Group=lightstream
 WorkingDirectory=/var/lib/lightstream
 # Spawns Lightbringer as a child and indexes its stream. Enable THIS unit or
-# lightbringer.service, never both: two nodes contend for the same gossip
-# identity, ports and shred-store lock.
+# lightbringer.service, never both: two nodes contend for UDP 65400-65500 and
+# the gRPC port.
 ExecStart=/usr/local/bin/lightstream run \
   --binary /usr/local/bin/lightbringer \
   --storage /var/lib/lightstream/shred-store \
