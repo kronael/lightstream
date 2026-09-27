@@ -76,7 +76,14 @@ async function checkPublicIp(): Promise<Check> {
 async function checkPortsFree(): Promise<Check> {
   const busy = (await $`ss -uln`.text())
     .split("\n")
-    .flatMap((line) => line.match(/:(\d+)\s*$/)?.[1] ?? [])
+    .slice(1)
+    .flatMap(
+      (line) =>
+        line
+          .trim()
+          .split(/\s+/)[4]
+          ?.match(/:(\d+)$/)?.[1] ?? [],
+    )
     .map(Number)
     .filter((port) => port >= 65400 && port <= 65500);
   if (busy.length > 0) {
