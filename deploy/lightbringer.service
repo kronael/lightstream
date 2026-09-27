@@ -1,0 +1,23 @@
+# Runs Lightbringer on its own, for the case where lightstream attaches to it
+# with --config instead of spawning it. Enable THIS unit or lightstream.service,
+# never both: two nodes contend for UDP 65400-65500 and the gRPC port.
+[Unit]
+Description=Lightbringer Solana shred ingest and block stream
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lightbringer
+Group=lightbringer
+WorkingDirectory=/var/lib/lightbringer
+ExecStart=/usr/local/bin/lightbringer
+Restart=on-failure
+RestartSec=5
+# Turbine opens one socket per port in the configured range.
+LimitNOFILE=65536
+StandardOutput=append:/var/log/lightbringer/lightbringer.log
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

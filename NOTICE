@@ -1,0 +1,56 @@
+# Provenance
+
+## Licence
+
+Copyright (C) 2026 lightstream contributors.
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License, version 3, as published by the Free
+Software Foundation. See LICENSE for the full text.
+
+This program is distributed WITHOUT ANY WARRANTY, without even the implied warranty
+of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+## Code used
+
+No third-party code is redistributed in this repository. Everything below is fetched
+at install or build time and stays out of commits.
+
+Runtime dependencies, resolved by `bun install` into a gitignored `node_modules/`:
+
+| Package | Version | Licence |
+| --- | --- | --- |
+| `@grpc/grpc-js` | 1.14.4 | Apache-2.0 |
+| `@grpc/proto-loader` | 0.7.15 | Apache-2.0 |
+
+Build-time only: `typescript` (Apache-2.0), `@types/bun` (MIT). The full resolved tree
+is permissive throughout — MIT, BSD-3-Clause, ISC and Apache-2.0 — which GPL-3.0 accepts
+one-way: their terms allow inclusion in a GPL-3.0 work, and this licence governs the
+combination.
+
+## Protocol definitions
+
+`proto/pb/slot_stream.proto` and `proto/pb/slot_entry.proto` are Lightbringer's
+gRPC contract, from https://github.com/Overclock-Validator/lightbringer.
+
+They are **not redistributed in this repository**. `make proto-sync` copies them
+from a local Lightbringer checkout at build time, and `.gitignore` keeps them
+out of commits.
+
+The reason is specific: as of 2026-09-17 the Lightbringer repository carries no
+LICENSE file and no `license` field in `Cargo.toml`, which under default
+copyright means all rights reserved. Vendoring those files into this package
+would be asserting a permission nobody granted. If upstream adds a licence,
+vendoring them becomes the better default — it removes the build step.
+
+## What this project talks to
+
+Lightbringer is a separate program, run by the operator, communicated with over
+a local gRPC socket. This package neither contains nor links it.
+
+## Name
+
+`lightstream` is named for Lightbringer, the node it consumes. It is an
+independent project and is not affiliated with or endorsed by Overclock
+Validator. The bare name `lightstream` is taken on npm; publishing there needs a
+scope.

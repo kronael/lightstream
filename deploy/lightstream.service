@@ -1,0 +1,26 @@
+[Unit]
+Description=lightstream — Lightbringer ingest and transaction index
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lightstream
+Group=lightstream
+WorkingDirectory=/var/lib/lightstream
+# Spawns Lightbringer as a child and indexes its stream. Enable THIS unit or
+# lightbringer.service, never both: two nodes contend for UDP 65400-65500 and
+# the gRPC port.
+ExecStart=/usr/local/bin/lightstream run \
+  --binary /usr/local/bin/lightbringer \
+  --storage /var/lib/lightstream/shred-store \
+  --snapshot https://api.mainnet-beta.solana.com \
+  --db /var/lib/lightstream/index.sqlite
+Environment=LIGHTSTREAM_PROTO_DIR=/usr/local/share/lightstream/proto
+Restart=on-failure
+RestartSec=5
+# Turbine opens one socket per port in the gossip range.
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
