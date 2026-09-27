@@ -34,7 +34,11 @@ export async function inboundPackets(): Promise<number | undefined> {
   return Number(packets);
 }
 
-/** Accepts inbound UDP on the Turbine range. Not persistent across reboot. */
+/**
+ * Opens the firewall: accepts inbound UDP on the Turbine range. This mutates the
+ * host's iptables rules and is the only thing in this tool that does. Not
+ * persistent across reboot.
+ */
 export async function openFirewall(): Promise<string> {
   const rule = ["INPUT", "-p", "udp", "--dport", PORT_RANGE, "-j", "ACCEPT"];
   const present = await $`${{ raw: sudo }} iptables -C ${rule}`

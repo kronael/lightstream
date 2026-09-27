@@ -8,6 +8,7 @@ import { type Slot, shutdownSignal, streamSlots } from "../src/stream.ts";
 const USAGE = `lightstream — index Solana transactions from blocks something vouched for
 
   lightstream preflight [--fix]     can this host receive Turbine?
+                                    --fix OPENS THE FIREWALL (inbound UDP)
   lightstream verify [--window 60]  are datagrams actually arriving?
   lightstream run [options]         spawn or attach to Lightbringer, then index
 
@@ -194,7 +195,13 @@ async function runPreflight(): Promise<number> {
       console.log(`      ${check.detail}`);
     }
   }
-  return checks.every((check) => check.ok) ? 0 : 1;
+  const failed = checks.filter((check) => !check.ok).length;
+  if (failed === 0) {
+    console.log(`all ${checks.length} checks passed`);
+    return 0;
+  }
+  console.log(`${failed} of ${checks.length} checks failed — fix these and run again`);
+  return 1;
 }
 
 async function runVerify(): Promise<number> {
